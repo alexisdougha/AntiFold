@@ -353,28 +353,9 @@ class CoordBatchConverter_mask_gpu(BatchConverter):
         res_pos = self.batch_convert_vals(pos_list)
         targets = self.batch_convert_vals(targets_list)
 
-        # check for cuda
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.backends.mps.is_available():
-            device = "mps"
-
-        if device == torch.device("cuda"):  # MH
-            coords = coords.type(torch.float32).to(device)
-            confidence = confidence.to(device)
-            tokens = tokens.to(device)
-            loss_masks = loss_masks.to(device)
-            res_pos = res_pos.to(device)
-            targets = targets.to(device)
-
         padding_mask = torch.isnan(coords[:, :, 0, 0])
         coord_mask = torch.isfinite(coords.sum(-2).sum(-1))
         confidence = confidence * coord_mask + (-1.0) * padding_mask
-
-        # Also padding mask #MH
-        if device == torch.device("cuda"):  # MH
-            padding_mask = padding_mask.to(device)
-            coord_mask = coord_mask.to(device)
-            confidence = confidence.to(device)
 
         return (
             coords,

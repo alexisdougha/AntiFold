@@ -1032,7 +1032,8 @@ def sequence_to_onehot(sequence):
     amino_list = list("ACDEFGHIKLMNPQRSTVWY")
     one_hot = np.zeros((len(sequence), len(amino_list)), dtype=int)
     for i, res in enumerate(sequence):
-        one_hot[i, amino_list.index(res)] = 1
+        if res in amino_list:
+            one_hot[i, amino_list.index(res)] = 1
     return one_hot
 
 
@@ -1061,12 +1062,15 @@ def get_sequence_sampled_global_score(seq, df_logits, regions_to_mutate=False):
     # log_probs = torch.clamp(log_probs, min=-100, max=100)
 
     # Calculate log odds scores
-    mask = torch.ones_like(S, dtype=torch.bool)
+    # Unknown residues (X) have no amino-acid log probability and must not
+    # contribute to the score until they are replaced by sampling.
+    known_residues = torch.tensor([res in amino_list for res in seq])
+    mask = known_residues
     score_global = _scores(S, log_probs, mask)
 
     if regions_to_mutate:
         region_mask = get_imgt_mask(df_logits, regions_to_mutate)
-        mask = torch.tensor(region_mask)
+        mask = torch.tensor(region_mask) & known_residues
         score_sampled = _scores(S, log_probs, mask)
     else:
         score_sampled = score_global
